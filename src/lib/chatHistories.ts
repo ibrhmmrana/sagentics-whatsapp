@@ -59,7 +59,7 @@ function rawRowToChatMessage(row: Record<string, unknown>): ChatMessage {
 
 /**
  * List conversations: group by session_id, latest message, count. Sorted by last message desc.
- * Fetches in pages (newest first) so the first row seen per session is always the most recent message.
+ * Fetches from chatbot_history table (newest first) so the first row seen per session is the most recent message; message/customer parsed in code for reliable preview text.
  */
 export async function getConversations(): Promise<{
   conversations: ConversationSummary[];
@@ -76,8 +76,8 @@ export async function getConversations(): Promise<{
   while (pageCount < LIST_MAX_PAGES) {
     pageCount += 1;
     const { data: rows, error } = await supabaseAdmin
-      .from(MESSAGES_VIEW)
-      .select(selectCols)
+      .from(MESSAGES_TABLE)
+      .select(tableSelectCols)
       .order("date_time", { ascending: false })
       .range(offset, offset + LIST_PAGE_SIZE - 1);
 
@@ -106,22 +106,23 @@ export async function getConversations(): Promise<{
   for (const row of allRows) {
     const sessionId = row.session_id as string;
     const existing = bySession.get(sessionId);
-    const content = (row.msg_content as string) ?? (row.msg_body as string) ?? null;
-    const isHuman = row.msg_type === "human";
+    const msg = parseJsonField<{ type?: string; content?: string; body?: string }>(row.message);
+    const customer = parseJsonField<{ name?: string; number?: string }>(row.customer);
+    const content = msg?.content ?? msg?.body ?? null;
+    const isHuman = msg?.type === "human";
 
     if (!existing) {
       bySession.set(sessionId, {
-        lastMessageContent: content,
-        lastMessageAt: row.date_time as string,
+        lastMessageContent: content ?? null,
+        lastMessageAt: (row.date_time as string) ?? null,
         lastId: row.id as number,
         lastCustomerMessageId: isHuman ? (row.id as number) : null,
-        customerNumber: typeof row.cust_number === "string" ? row.cust_number : "",
-        customerName: typeof row.cust_name === "string" ? row.cust_name : null,
+        customerNumber: customer?.number ?? "",
+        customerName: customer?.name ?? null,
         count: 1,
       });
     } else {
       existing.count += 1;
-      // Rows are desc by date_time; first row per session is latest. If we didn't have a human message yet and this (older) row is human, use it as lastCustomerMessageId for unread — we want the latest human message id, so only set when we first see a human (which when iterating desc is the most recent human).
       if (isHuman && existing.lastCustomerMessageId == null) {
         existing.lastCustomerMessageId = row.id as number;
       }
