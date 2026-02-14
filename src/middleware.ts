@@ -5,7 +5,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function middleware(request: NextRequest) {
+  // If Supabase env vars are missing (build-time inlining failed), skip auth
+  // and just pass the request through so we don't accidentally clear cookies.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const res = NextResponse.next({ request });
+    res.headers.set("x-middleware-env", "MISSING");
+    return res;
+  }
+
   let response = NextResponse.next({ request });
+
+  // Track what setAll does for debugging
+  let setAllCalledWith: string[] = [];
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -16,6 +27,8 @@ export async function middleware(request: NextRequest) {
         }));
       },
       setAll(cookiesToSet) {
+        setAllCalledWith = cookiesToSet.map((c) => `${c.name}=${c.options?.maxAge ?? "?"}`);
+
         // 1. Update request cookies so downstream server code (layout, API
         //    routes) sees the refreshed tokens via cookies().
         cookiesToSet.forEach(({ name, value }) =>
@@ -34,7 +47,15 @@ export async function middleware(request: NextRequest) {
   });
 
   // Refresh the session — triggers setAll if tokens are refreshed.
-  await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+
+  // Debug headers (visible in Network tab / debug endpoint)
+  response.headers.set("x-middleware-env", "OK");
+  response.headers.set("x-middleware-user", data?.user?.id ? "found" : "none");
+  if (error) response.headers.set("x-middleware-error", error.message);
+  if (setAllCalledWith.length > 0) {
+    response.headers.set("x-middleware-setall", setAllCalledWith.join(", "));
+  }
 
   return response;
 }
