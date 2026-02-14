@@ -24,6 +24,8 @@ Copy `.env.example` to `.env.local` and fill in:
 
 **Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). Admin auth uses Supabase Auth (email + password). Session is stored in cookies via @supabase/ssr. In Supabase Dashboard go to Authentication → Providers → Email and turn off "Enable Sign Up". Add admin users manually under Authentication → Users → Add user.
 
+**Custom domain:** If you use both a Vercel URL (e.g. `webfluential-whatsapp.vercel.app`) and a custom domain (e.g. `webfluential.intakt.co.za`), cookies are per-origin. Always open and sign in on the **same** URL you use for the dashboard (e.g. only the custom domain, or only the Vercel URL). Otherwise the server won't receive auth cookies and you'll see "Not signed in".
+
 ## Database (Supabase)
 
 Run the SQL in `supabase/migrations/001_whatsapp_tables.sql` to create:

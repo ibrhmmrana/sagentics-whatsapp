@@ -23,7 +23,7 @@ export default function AdminLoginForm() {
     }
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError) {
       setError(signInError.message === "Invalid login credentials"
@@ -31,6 +31,23 @@ export default function AdminLoginForm() {
         : signInError.message);
       setLoading(false);
       return;
+    }
+
+    if (data?.session?.access_token && data?.session?.refresh_token) {
+      const setRes = await fetch("/api/auth/set-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }),
+      });
+      if (!setRes.ok) {
+        setError("Session could not be saved. Try again.");
+        setLoading(false);
+        return;
+      }
     }
 
     window.location.href = "/";
