@@ -34,7 +34,8 @@ export async function getConversations(): Promise<{
   const { data: rows, error } = await supabaseAdmin
     .from("chatbot_history")
     .select("id, session_id, message, customer, date_time")
-    .order("date_time", { ascending: false });
+    .order("date_time", { ascending: false })
+    .limit(50000);
 
   if (error) {
     return { conversations: [], error: error.message };
@@ -103,6 +104,7 @@ export async function getConversations(): Promise<{
 
 /**
  * Get all messages for a conversation, ordered by date_time ascending.
+ * Uses a high limit so Supabase default (1000) doesn't hide older messages.
  */
 export async function getConversationBySessionId(
   sessionId: string
@@ -115,23 +117,31 @@ export async function getConversationBySessionId(
     .from("chatbot_history")
     .select("id, session_id, message, customer, date_time")
     .eq("session_id", sessionId)
-    .order("date_time", { ascending: true });
+    .order("date_time", { ascending: true })
+    .limit(10000);
 
   if (error) {
     return { messages: [], error: error.message };
   }
 
   const messages: ChatMessage[] = (rows ?? []).map((row) => {
-    const msg = row.message as { type?: string; content?: string };
-    const customer = row.customer as { number?: string; name?: string };
+    const msg = row.message as Record<string, unknown> | null;
+    const customer = row.customer as { number?: string; name?: string } | null;
+    const type = msg?.type === "human" ? "human" : "ai";
+    const content =
+      typeof msg?.content === "string"
+        ? msg.content
+        : typeof (msg as { body?: string })?.body === "string"
+          ? (msg as { body: string }).body
+          : "";
     return {
       id: row.id,
-      sessionId: row.session_id as string,
-      senderType: (msg?.type === "human" ? "human" : "ai") as "human" | "ai",
-      content: msg?.content ?? "",
+      sessionId: String(row.session_id ?? ""),
+      senderType: type as "human" | "ai",
+      content,
       customerName: customer?.name ?? null,
       customerNumber: customer?.number ?? "",
-      createdAt: row.date_time ?? "",
+      createdAt: row.date_time ? String(row.date_time) : "",
     };
   });
 

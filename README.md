@@ -14,6 +14,7 @@ Copy `.env.example` to `.env.local` and fill in:
 | `WHATSAPP_ACCESS_TOKEN` | Permanent access token from Meta Business. |
 | `WHATSAPP_PHONE_NUMBER_ID` | Phone number ID from Meta (not the number itself). |
 | `WHATSAPP_SESSION_ID_PREFIX` | Optional; default `APP-`. Session IDs = `{PREFIX}{waId}`. |
+| `WHATSAPP_ALLOWED_AI_NUMBER` | Optional; digits only with country code (e.g. `27693475825`). Only this number receives AI replies; others get messages saved but no AI response. Default: `27693475825`. |
 | **Supabase** | |
 | `NEXT_PUBLIC_SUPABASE_URL` | Project URL. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side writes (webhook, admin API). |
@@ -32,7 +33,12 @@ Run the SQL in `supabase/migrations/001_whatsapp_tables.sql` to create:
 - **chatbot_history** — every message (incoming + outgoing) for dashboard and AI context.
 - **whatsapp_human_control** — which conversations are in human takeover (AI does not reply).
 
-Enable **Realtime** for `chatbot_history`: in Supabase Dashboard go to **Database → Replication**, add `chatbot_history` to the `supabase_realtime` publication so the admin dashboard gets new messages without refresh.
+**Realtime (required for live updates in the dashboard):**
+
+1. In Supabase Dashboard go to **Database → Replication**.
+2. Find the **supabase_realtime** publication and click to edit.
+3. Add the **chatbot_history** table so INSERTs are broadcast to subscribed clients.
+4. Set **NEXT_PUBLIC_SUPABASE_ANON_KEY** in `.env.local` (the dashboard uses it to subscribe to new messages). Without this, new messages will not appear until you refresh.
 
 ## Scripts
 

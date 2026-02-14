@@ -68,6 +68,10 @@ export default function WhatsAppDashboardPage() {
   const [viewedIds, setViewedIds] = useState<Set<number>>(getViewedSet);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedSessionIdRef = useRef(selectedSessionId);
+  const conversationsRef = useRef(conversations);
+  selectedSessionIdRef.current = selectedSessionId;
+  conversationsRef.current = conversations;
 
   const selectedConv = conversations.find((c) => c.sessionId === selectedSessionId);
   const customerName = selectedConv?.customerName ?? selectedConv?.customerNumber ?? "Customer";
@@ -115,8 +119,9 @@ export default function WhatsAppDashboardPage() {
   useEffect(() => {
     const client = supabaseClient;
     if (!client) return;
+
     const channel = client
-      .channel("chatbot_history_inserts")
+      .channel("chatbot_history_realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chatbot_history" },
@@ -137,21 +142,48 @@ export default function WhatsAppDashboardPage() {
             customerNumber: row.customer?.number ?? "",
             createdAt: row.date_time,
           };
-          if (row.session_id === selectedSessionId) {
+          const currentSelected = selectedSessionIdRef.current;
+          if (row.session_id === currentSelected) {
             setMessages((prev) => [...prev, newMsg]);
             if (newMsg.senderType === "human") addViewed(row.id);
             setViewedIds(getViewedSet());
+          }
+          const currentList = conversationsRef.current;
+          const existingIdx = currentList.findIndex((c) => c.sessionId === row.session_id);
+          if (existingIdx >= 0) {
+            setConversations((prev) => {
+              const updated = [...prev];
+              const idx = updated.findIndex((c) => c.sessionId === row.session_id);
+              if (idx < 0) return prev;
+              updated[idx] = {
+                ...updated[idx],
+                lastMessageContent: newMsg.content,
+                lastMessageAt: row.date_time,
+                messageCount: updated[idx].messageCount + 1,
+                lastCustomerMessageId:
+                  newMsg.senderType === "human" ? row.id : updated[idx].lastCustomerMessageId,
+              };
+              return updated.sort((a, b) => {
+                const t1 = a.lastMessageAt ?? "";
+                const t2 = b.lastMessageAt ?? "";
+                return t2.localeCompare(t1);
+              });
+            });
           } else {
             fetchConversations();
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          fetchConversations();
+        }
+      });
 
     return () => {
       client.removeChannel(channel);
     };
-  }, [selectedSessionId, fetchConversations]);
+  }, [fetchConversations]);
 
   const handleTakeOver = async () => {
     if (!selectedSessionId) return;

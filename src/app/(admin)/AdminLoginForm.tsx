@@ -1,50 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function AdminLoginForm() {
-  const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Login failed");
-        return;
-      }
-      window.location.href = "/";
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (searchParams.get("login_failed") === "1") {
+      setError("Invalid password");
     }
-  }
+  }, [searchParams]);
 
   return (
     <div className="admin-login">
       <h1 className="admin-login__title">Admin Login</h1>
-      <form onSubmit={handleSubmit} className="admin-login__form">
+      <form
+        action="/api/admin/login"
+        method="POST"
+        className="admin-login__form"
+        onSubmit={() => setError("")}
+      >
         <input
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          name="password"
           placeholder="Password"
           autoFocus
-          disabled={loading}
+          required
           className="admin-login__input"
         />
-        <button type="submit" disabled={loading} className="admin-login__btn">
-          {loading ? "Logging in…" : "Log in"}
+        <button type="submit" className="admin-login__btn">
+          Log in
         </button>
         {error && <p className="admin-login__error">{error}</p>}
       </form>
