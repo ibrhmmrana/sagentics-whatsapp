@@ -114,6 +114,13 @@ function extractMessage(body: unknown): {
 export async function POST(request: NextRequest) {
   try {
     const body: unknown = await request.json();
+
+    // Log the raw payload so we can see exactly what Meta sends
+    console.log(
+      "[WhatsApp Webhook] Raw payload:",
+      JSON.stringify(body, null, 2)
+    );
+
     const extracted = extractMessage(body);
 
     if (extracted) {
