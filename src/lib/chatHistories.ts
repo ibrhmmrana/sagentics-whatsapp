@@ -23,8 +23,39 @@ export interface ChatMessage {
 const LIST_PAGE_SIZE = 500;
 const LIST_MAX_PAGES = 200;
 const MESSAGES_VIEW = "chatbot_history_flat";
+const MESSAGES_TABLE = "chatbot_history";
 const selectCols =
   "id, session_id, msg_type, msg_content, msg_body, cust_name, cust_number, date_time";
+const tableSelectCols = "id, session_id, message, customer, date_time";
+
+function parseJsonField<T = Record<string, unknown>>(val: unknown): T | null {
+  if (val == null) return null;
+  if (typeof val === "object" && !Array.isArray(val) && val !== null) return val as T;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function rawRowToChatMessage(row: Record<string, unknown>): ChatMessage {
+  const msg = parseJsonField<{ type?: string; content?: string; body?: string }>(row.message);
+  const customer = parseJsonField<{ name?: string; number?: string }>(row.customer);
+  const type = msg?.type === "human" ? "human" : "ai";
+  const content = msg?.content ?? msg?.body ?? "";
+  return {
+    id: row.id as number,
+    sessionId: String(row.session_id ?? ""),
+    senderType: type as "human" | "ai",
+    content,
+    customerName: customer?.name ?? null,
+    customerNumber: customer?.number ?? "",
+    createdAt: row.date_time ? String(row.date_time) : "",
+  };
+}
 
 /**
  * List conversations: group by session_id, latest message, count. Sorted by last message desc.
@@ -145,6 +176,7 @@ const RECENT_INITIAL_LIMIT = 100;
 /**
  * Get the most recent N messages for a conversation (single query, fast).
  * Returns messages in chronological order (oldest first) for display.
+ * Reads from chatbot_history table so message/customer JSON (object or string) are always parsed correctly.
  */
 export async function getConversationRecent(
   sessionId: string,
@@ -156,8 +188,8 @@ export async function getConversationRecent(
 
   const cap = Math.min(Math.max(1, limit), 500);
   const { data: rows, error } = await supabaseAdmin
-    .from(MESSAGES_VIEW)
-    .select(selectCols)
+    .from(MESSAGES_TABLE)
+    .select(tableSelectCols)
     .eq("session_id", sessionId)
     .order("date_time", { ascending: false })
     .limit(cap);
@@ -167,7 +199,7 @@ export async function getConversationRecent(
   }
 
   const reversed = (rows ?? []).slice(0).reverse();
-  const messages = (reversed as Record<string, unknown>[]).map(rowToChatMessage);
+  const messages = (reversed as Record<string, unknown>[]).map(rawRowToChatMessage);
   return { messages };
 }
 
@@ -175,6 +207,7 @@ export async function getConversationRecent(
  * Get ALL messages for a conversation, ordered by date_time ascending.
  * Fetches in pages to avoid any response size/row limit; guarantees every
  * message for the session_id is returned.
+ * Reads from chatbot_history table so message/customer JSON (object or string) are always parsed correctly.
  */
 export async function getConversationBySessionId(
   sessionId: string
@@ -191,8 +224,8 @@ export async function getConversationBySessionId(
   while (hasMore && pageCount < MESSAGES_MAX_PAGES) {
     pageCount += 1;
     const { data: rows, error } = await supabaseAdmin
-      .from(MESSAGES_VIEW)
-      .select(selectCols)
+      .from(MESSAGES_TABLE)
+      .select(tableSelectCols)
       .eq("session_id", sessionId)
       .order("date_time", { ascending: true })
       .range(offset, offset + MESSAGES_PAGE_SIZE - 1);
@@ -211,6 +244,6 @@ export async function getConversationBySessionId(
     }
   }
 
-  const messages = allRows.map(rowToChatMessage);
+  const messages = allRows.map(rawRowToChatMessage);
   return { messages };
 }
