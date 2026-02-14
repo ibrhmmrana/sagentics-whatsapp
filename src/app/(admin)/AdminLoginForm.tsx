@@ -44,12 +44,24 @@ export default function AdminLoginForm() {
           refresh_token: data.session.refresh_token,
         }),
       });
+      // Log diagnostics for debugging cookie issues
+      try {
+        const setResBody = await setRes.clone().json();
+        console.log("[auth] set-session response:", setResBody);
+      } catch {}
       if (!setRes.ok) {
         setError("Session could not be saved. Try again.");
         setLoading(false);
         return;
       }
+    } else {
+      console.warn("[auth] signInWithPassword did not return session tokens");
     }
+
+    // Check if cookies were written to document.cookie
+    const hasSbCookie = document.cookie.includes("sb-");
+    console.log("[auth] document.cookie has sb- cookie:", hasSbCookie);
+    console.log("[auth] all cookie names:", document.cookie.split(";").map(c => c.trim().split("=")[0]));
 
     window.location.href = "/";
   }

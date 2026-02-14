@@ -47,7 +47,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
 
-  const response = NextResponse.json({ ok: true });
+  // Diagnostic: return what cookies are being set
+  const cookieInfo = cookiesToSet.map(({ name, value, options }) => ({
+    name,
+    valueLength: value.length,
+    maxAge: (options as Record<string, unknown>)?.maxAge ?? null,
+  }));
+
+  const response = NextResponse.json({
+    ok: true,
+    cookiesSet: cookieInfo.length,
+    cookies: cookieInfo,
+  });
   cookiesToSet.forEach(({ name, value, options }) =>
     response.cookies.set(name, value, options as Record<string, unknown>)
   );

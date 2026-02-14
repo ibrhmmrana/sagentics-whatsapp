@@ -51,8 +51,17 @@ export async function GET(request: NextRequest) {
     userId: user?.id ?? null,
   });
 
-  // Set test cookie
+  // Set test cookies — small and large — to check size limits
   response.cookies.set("__debug_test", "cookie_works_" + Date.now(), {
+    path: "/",
+    sameSite: "lax",
+    httpOnly: false,
+    maxAge: 60 * 60,
+  });
+
+  // ~3500 byte cookie (same size as a Supabase session chunk)
+  const largeValue = "L".repeat(3500);
+  response.cookies.set("__debug_large", largeValue, {
     path: "/",
     sameSite: "lax",
     httpOnly: false,
