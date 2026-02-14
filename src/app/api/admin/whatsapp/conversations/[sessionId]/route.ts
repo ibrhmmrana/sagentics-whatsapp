@@ -35,6 +35,10 @@ export async function GET(
     ? await getConversationRecent(sessionId, limit)
     : await getConversationBySessionId(sessionId);
 
+  console.log(
+    `[conversations/${sessionId}] mode=${useFastPath ? "recent" : "full"} returned=${messages.length} error=${error ?? "none"}`
+  );
+
   if (error) {
     return NextResponse.json(
       { error: "Failed to load messages", reason: error },
