@@ -206,8 +206,6 @@ export async function getConversationRecent(
 
 /**
  * Get ALL messages for a conversation, ordered by date_time ascending.
- * Fetches in pages to avoid any response size/row limit; guarantees every
- * message for the session_id is returned.
  * Reads from chatbot_history table so message/customer JSON (object or string) are always parsed correctly.
  */
 export async function getConversationBySessionId(
@@ -217,36 +215,18 @@ export async function getConversationBySessionId(
     return { messages: [], error: "Supabase not configured" };
   }
 
-  const allRows: Record<string, unknown>[] = [];
-  let offset = 0;
-  let hasMore = true;
-  let pageCount = 0;
+  const { data: rows, error } = await supabaseAdmin
+    .from(MESSAGES_TABLE)
+    .select(tableSelectCols)
+    .eq("session_id", sessionId)
+    .order("date_time", { ascending: true });
 
-  while (hasMore && pageCount < MESSAGES_MAX_PAGES) {
-    pageCount += 1;
-    const { data: rows, error } = await supabaseAdmin
-      .from(MESSAGES_TABLE)
-      .select(tableSelectCols)
-      .eq("session_id", sessionId)
-      .order("date_time", { ascending: true })
-      .range(offset, offset + MESSAGES_PAGE_SIZE - 1);
-
-    if (error) {
-      return { messages: [], error: error.message };
-    }
-
-    const page = rows ?? [];
-    allRows.push(...(page as Record<string, unknown>[]));
-
-    if (page.length < MESSAGES_PAGE_SIZE) {
-      hasMore = false;
-    } else {
-      offset += MESSAGES_PAGE_SIZE;
-    }
+  if (error) {
+    return { messages: [], error: error.message };
   }
 
-  console.log(`[getConversationBySessionId] ${sessionId}: ${allRows.length} raw rows from chatbot_history`);
+  const allRows = (rows ?? []) as Record<string, unknown>[];
+  console.log(`[getConversationBySessionId] ${sessionId}: ${allRows.length} raw rows, ids: ${allRows.map(r => r.id).join(",")}`);
   const messages = allRows.map(rawRowToChatMessage);
-  console.log(`[getConversationBySessionId] ${sessionId}: ${messages.length} messages after mapping, ids: ${messages.map(m => m.id).join(",")}`);
   return { messages };
 }
