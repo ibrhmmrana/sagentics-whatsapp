@@ -61,7 +61,20 @@ export default function AdminLoginForm() {
     // Check if cookies were written to document.cookie
     const hasSbCookie = document.cookie.includes("sb-");
     console.log("[auth] document.cookie has sb- cookie:", hasSbCookie);
-    console.log("[auth] all cookie names:", document.cookie.split(";").map(c => c.trim().split("=")[0]));
+    const allCookieParts = document.cookie.split(";").map(c => c.trim());
+    console.log("[auth] all cookie names:", allCookieParts.map(c => c.split("=")[0]));
+
+    // Check the BYTE SIZE of each cookie (to see if it exceeds the 4096 limit)
+    allCookieParts.forEach(part => {
+      const eqIdx = part.indexOf("=");
+      if (eqIdx < 0) return;
+      const name = part.substring(0, eqIdx);
+      const val = part.substring(eqIdx + 1);
+      const totalBytes = new Blob([part]).size;
+      if (name.startsWith("sb-") || name.startsWith("__debug")) {
+        console.log(`[auth] cookie "${name}": value=${val.length}chars, total=${totalBytes}bytes`);
+      }
+    });
 
     window.location.href = "/";
   }

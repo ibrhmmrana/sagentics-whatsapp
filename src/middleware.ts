@@ -50,8 +50,13 @@ export async function middleware(request: NextRequest) {
   const { data, error } = await supabase.auth.getUser();
 
   // Debug headers (visible in Network tab / debug endpoint)
+  const reqCookieNames = request.cookies.getAll().map((c) => c.name);
+  const sbCookies = reqCookieNames.filter((n) => n.startsWith("sb-"));
+
   response.headers.set("x-middleware-env", "OK");
   response.headers.set("x-middleware-user", data?.user?.id ? "found" : "none");
+  response.headers.set("x-middleware-cookies", `total=${reqCookieNames.length},sb=${sbCookies.length}`);
+  if (sbCookies.length > 0) response.headers.set("x-middleware-sb-names", sbCookies.join(","));
   if (error) response.headers.set("x-middleware-error", error.message);
   if (setAllCalledWith.length > 0) {
     response.headers.set("x-middleware-setall", setAllCalledWith.join(", "));
