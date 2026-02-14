@@ -49,11 +49,17 @@ export async function POST(request: NextRequest) {
   const cookieName = getCookieName();
   const maxAge = 30 * 24 * 60 * 60; // 30 days
 
-  const cookieValue = `${cookieName}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
-  headers.append("Set-Cookie", cookieValue);
-
-  // Redirect so the browser receives Set-Cookie and then navigates (session persists)
   const url = request.nextUrl;
   const redirectTo = new URL("/", url.origin);
-  return NextResponse.redirect(redirectTo, { status: 302, headers });
+  const response = NextResponse.redirect(redirectTo, { status: 302, headers });
+
+  response.cookies.set(cookieName, token, {
+    path: "/",
+    maxAge,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return response;
 }

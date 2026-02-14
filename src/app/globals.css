@@ -296,6 +296,19 @@ textarea {
   font-size: 0.875rem;
   margin: 0;
 }
+
+.whatsapp-dash__error {
+  padding: 1rem;
+  color: var(--error, #c00);
+  font-size: 0.875rem;
+  margin: 0;
+  background: rgba(200, 0, 0, 0.08);
+  border-radius: 6px;
+}
+
+.whatsapp-dash__error--thread {
+  margin: 0.5rem 1rem;
+}
 .whatsapp-dash__conv {
   display: block;
   width: 100%;

@@ -65,6 +65,8 @@ export default function WhatsAppDashboardPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<number>>(getViewedSet);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,15 +80,31 @@ export default function WhatsAppDashboardPage() {
   const customerNumber = selectedConv?.customerNumber ?? "";
 
   const fetchConversations = useCallback(async () => {
+    setListError(null);
     const res = await fetch("/api/admin/whatsapp/conversations");
-    if (!res.ok) return;
+    if (!res.ok) {
+      const msg = res.status === 401
+        ? "Please log in again (session may have expired or you’re on a different domain)."
+        : "Failed to load conversations. On production, ensure Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) are set in Vercel.";
+      setListError(msg);
+      setConversations([]);
+      return;
+    }
     const data = await res.json();
     setConversations(data.conversations ?? []);
   }, []);
 
   const fetchMessages = useCallback(async (sessionId: string) => {
+    setMessagesError(null);
     const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const msg = res.status === 401
+        ? "Please log in again."
+        : "Failed to load messages.";
+      setMessagesError(msg);
+      setMessages([]);
+      return;
+    }
     const data = await res.json();
     setMessages(data.messages ?? []);
   }, []);
@@ -256,6 +274,8 @@ export default function WhatsAppDashboardPage() {
         <div className="whatsapp-dash__conversations">
           {loading ? (
             <p className="whatsapp-dash__muted">Loading…</p>
+          ) : listError ? (
+            <p className="whatsapp-dash__error" role="alert">{listError}</p>
           ) : filteredConversations.length === 0 ? (
             <p className="whatsapp-dash__muted">No conversations yet.</p>
           ) : (
@@ -304,6 +324,9 @@ export default function WhatsAppDashboardPage() {
             <header className="whatsapp-dash__thread-header">
               <h3 className="whatsapp-dash__thread-title">{customerName}</h3>
             </header>
+            {messagesError && (
+              <p className="whatsapp-dash__error whatsapp-dash__error--thread" role="alert">{messagesError}</p>
+            )}
             <div ref={scrollRef} className="whatsapp-dash__messages">
               {messages.map((m) => (
                 <div

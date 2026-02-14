@@ -26,6 +26,8 @@ Copy `.env.example` to `.env.local` and fill in:
 | **AI** | |
 | `OPENAI_API_KEY` | For the WhatsApp AI agent (e.g. gpt-4o-mini). |
 
+**Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). For the WhatsApp dashboard to show conversations and messages you must set at least `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_DASH_PASSWORD` / `ADMIN_DASH_COOKIE_SECRET`. Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` for live message updates. Log in on the production URL (e.g. `https://your-app.vercel.app`) so the auth cookie is set for that domain; if you only log in on localhost, the production site will show the login form and API calls will return 401 until you log in on prod.
+
 ## Database (Supabase)
 
 Run the SQL in `supabase/migrations/001_whatsapp_tables.sql` to create:
