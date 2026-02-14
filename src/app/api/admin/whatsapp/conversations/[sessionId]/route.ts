@@ -29,7 +29,7 @@ export async function GET(
   const { messages, error } = await getConversationBySessionId(sessionId);
   if (error) {
     return NextResponse.json(
-      { error: "Failed to load messages" },
+      { error: "Failed to load messages", reason: error },
       { status: 500, headers }
     );
   }

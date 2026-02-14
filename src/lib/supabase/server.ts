@@ -58,9 +58,9 @@ export type User = Awaited<
 >["data"]["user"];
 
 /**
- * Get the authenticated user in an API route. Tries cookies first, then
- * Authorization: Bearer <token> so client can send the session token when
- * cookies are not sent (e.g. same request timing / custom domain).
+ * Get the authenticated user in an API route. Tries cookies from request,
+ * then Authorization: Bearer <token>, then cookies() from next/headers
+ * (in case Route Handlers see different cookie context than request.cookies).
  */
 export async function getAuthUser(request: NextRequest): Promise<User | null> {
   const supabase = createClientFromRequest(request);
@@ -69,8 +69,21 @@ export async function getAuthUser(request: NextRequest): Promise<User | null> {
 
   const authHeader = request.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return null;
+  if (token) {
+    const { data: { user: userFromToken } } = await supabase.auth.getUser(token);
+    if (userFromToken) return userFromToken;
+  }
 
-  const { data: { user: userFromToken } } = await supabase.auth.getUser(token);
-  return userFromToken;
+  // Fallback: try cookies() from next/headers (Route Handlers can have different cookie access)
+  const cookieStore = await cookies();
+  const supabaseFromStore = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll() {},
+    },
+  });
+  const { data: { user: userFromStore } } = await supabaseFromStore.auth.getUser();
+  return userFromStore ?? null;
 }

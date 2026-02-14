@@ -37,8 +37,23 @@ Run the SQL in `supabase/migrations/001_whatsapp_tables.sql` to create:
 
 1. In Supabase Dashboard go to **Database → Replication**.
 2. Find the **supabase_realtime** publication and click to edit.
-3. Add the **chatbot_history** table so INSERTs are broadcast to subscribed clients.
-4. Set **NEXT_PUBLIC_SUPABASE_ANON_KEY** in `.env.local` (the dashboard uses it to subscribe to new messages). Without this, new messages will not appear until you refresh.
+3. Under "Tables", add **chatbot_history** (enable INSERT so new messages are broadcast).
+4. Save. Without this, new messages will not appear in the UI until you refresh.
+5. In production, set **NEXT_PUBLIC_SUPABASE_ANON_KEY** in Vercel (the dashboard uses it for auth and for the Realtime subscription).
+
+---
+
+## Production: Supabase checklist
+
+If **conversations don’t load** or **live messages don’t appear** on production, check:
+
+| Check | Why it matters |
+|-------|----------------|
+| **SUPABASE_SERVICE_ROLE_KEY** set in Vercel | The admin API uses this to read `chatbot_history`. If missing, the server returns "Supabase not configured" and you get no conversations. |
+| **NEXT_PUBLIC_SUPABASE_URL** and **NEXT_PUBLIC_SUPABASE_ANON_KEY** set in Vercel | Required for auth and for the browser Realtime client. Redeploy after adding/changing these (they are inlined at build time). |
+| **Replication:** `chatbot_history` in **supabase_realtime** publication | In Supabase Dashboard → Database → Replication → edit **supabase_realtime** → add table **chatbot_history** (INSERT). Otherwise Realtime won’t broadcast new rows and live messages won’t appear. |
+| **Same Supabase project** for local and prod | Use the same project URL and keys in Vercel as in `.env.local` if you want to see the same data. |
+| **No RLS on `chatbot_history`** (or policies that allow read) | The app does not use RLS by default. If you enable RLS, add policies so the service role (and, for Realtime, the anon/authenticated role) can read `chatbot_history`. |
 
 ## Scripts
 

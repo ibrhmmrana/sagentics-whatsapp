@@ -89,12 +89,32 @@ export default function WhatsAppDashboardPage() {
 
   const fetchConversations = useCallback(async () => {
     setListError(null);
-    const authHeaders = await getAuthHeaders();
-    const res = await fetch("/api/admin/whatsapp/conversations", {
-      credentials: "include",
-      headers: authHeaders,
-    });
+
+    const doFetch = async (headers: Record<string, string>) => {
+      return fetch("/api/admin/whatsapp/conversations", {
+        credentials: "include",
+        headers,
+      });
+    };
+
+    let authHeaders = await getAuthHeaders();
+    let res = await doFetch(authHeaders);
+
+    // If 401 and we didn't send Bearer, wait for session and retry once (client may not have read cookies yet)
+    if (res.status === 401 && !authHeaders.Authorization) {
+      await new Promise((r) => setTimeout(r, 100));
+      authHeaders = await getAuthHeaders();
+      if (authHeaders.Authorization) res = await doFetch(authHeaders);
+    }
+
     if (!res.ok) {
+      if (res.status === 401) {
+        console.warn("[auth] 401 from conversations API:", {
+          cookiesTotal: res.headers.get("x-debug-cookies-total"),
+          cookiesSb: res.headers.get("x-debug-cookies-sb"),
+          hasBearer: res.headers.get("x-debug-has-bearer"),
+        });
+      }
       let msg = "Failed to load conversations.";
       try {
         const body = await res.json();

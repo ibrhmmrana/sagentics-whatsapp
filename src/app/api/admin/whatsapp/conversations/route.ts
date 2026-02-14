@@ -10,18 +10,28 @@ export async function GET(request: NextRequest) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
 
+  // Debug: what did this request actually receive? (so we can see why auth fails)
+  const allCookies = request.cookies.getAll();
+  const sbCookies = allCookies.filter((c) => c.name.startsWith("sb-"));
+  const hasBearer = !!request.headers.get("Authorization")?.startsWith("Bearer ");
+  headers.set("x-debug-cookies-total", String(allCookies.length));
+  headers.set("x-debug-cookies-sb", String(sbCookies.length));
+  headers.set("x-debug-has-bearer", hasBearer ? "1" : "0");
+
   const user = await getAuthUser(request);
   if (!user) {
+    headers.set("x-debug-auth", "no-user");
     return NextResponse.json(
       { error: "Unauthorized", reason: "Not signed in" },
       { status: 401, headers }
     );
   }
+  headers.set("x-debug-auth", "ok");
 
   const { conversations, error } = await getConversations();
   if (error) {
     return NextResponse.json(
-      { error: "Failed to load conversations" },
+      { error: "Failed to load conversations", reason: error },
       { status: 500, headers }
     );
   }

@@ -59,9 +59,12 @@ export async function POST(request: NextRequest) {
     cookiesSet: cookiesToSet.length,
   });
 
-  cookiesToSet.forEach(({ name, value, options }) =>
-    response.cookies.set(name, value, options as Record<string, unknown>)
-  );
+  const isHttps = request.headers.get("x-forwarded-proto") === "https" || request.url.startsWith("https:");
+  cookiesToSet.forEach(({ name, value, options }) => {
+    const opts = { ...(options as Record<string, unknown>) };
+    if (isHttps && opts.secure !== false) opts.secure = true;
+    response.cookies.set(name, value, opts);
+  });
 
   return response;
 }
