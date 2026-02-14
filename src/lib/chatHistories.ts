@@ -22,6 +22,9 @@ export interface ChatMessage {
 
 const LIST_PAGE_SIZE = 500;
 const LIST_MAX_PAGES = 200;
+const MESSAGES_VIEW = "chatbot_history_flat";
+const selectCols =
+  "id, session_id, msg_type, msg_content, msg_body, cust_name, cust_number, date_time";
 
 /**
  * List conversations: group by session_id, latest message, count. Sorted by last message desc.
@@ -35,8 +38,6 @@ export async function getConversations(): Promise<{
     return { conversations: [], error: "Supabase not configured" };
   }
 
-  const selectCols =
-    "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time";
   const allRows: Record<string, unknown>[] = [];
   let offset = 0;
   let pageCount = 0;
@@ -44,7 +45,7 @@ export async function getConversations(): Promise<{
   while (pageCount < LIST_MAX_PAGES) {
     pageCount += 1;
     const { data: rows, error } = await supabaseAdmin
-      .from("chatbot_history")
+      .from(MESSAGES_VIEW)
       .select(selectCols)
       .order("date_time", { ascending: false })
       .range(offset, offset + LIST_PAGE_SIZE - 1);
@@ -140,8 +141,6 @@ function rowToChatMessage(row: Record<string, unknown>): ChatMessage {
 }
 
 const RECENT_INITIAL_LIMIT = 100;
-const selectCols =
-  "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time";
 
 /**
  * Get the most recent N messages for a conversation (single query, fast).
@@ -157,7 +156,7 @@ export async function getConversationRecent(
 
   const cap = Math.min(Math.max(1, limit), 500);
   const { data: rows, error } = await supabaseAdmin
-    .from("chatbot_history")
+    .from(MESSAGES_VIEW)
     .select(selectCols)
     .eq("session_id", sessionId)
     .order("date_time", { ascending: false })
@@ -192,7 +191,7 @@ export async function getConversationBySessionId(
   while (hasMore && pageCount < MESSAGES_MAX_PAGES) {
     pageCount += 1;
     const { data: rows, error } = await supabaseAdmin
-      .from("chatbot_history")
+      .from(MESSAGES_VIEW)
       .select(selectCols)
       .eq("session_id", sessionId)
       .order("date_time", { ascending: true })

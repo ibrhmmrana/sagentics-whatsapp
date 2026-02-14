@@ -28,10 +28,10 @@ Copy `.env.example` to `.env.local` and fill in:
 
 ## Database (Supabase)
 
-Run the SQL in `supabase/migrations/001_whatsapp_tables.sql` to create:
+Run the SQL migrations in order:
 
-- **chatbot_history** — every message (incoming + outgoing) for dashboard and AI context.
-- **whatsapp_human_control** — which conversations are in human takeover (AI does not reply).
+1. **001_whatsapp_tables.sql** — creates **chatbot_history** (every message for dashboard and AI context) and **whatsapp_human_control** (human takeover flag).
+2. **002_chatbot_history_flat_view.sql** — creates **chatbot_history_flat** view so messages show correctly when `message`/`customer` are stored as JSON strings in JSONB. Run this in Supabase SQL Editor if you already have data.
 
 **Realtime (required for live updates in the dashboard):**
 
