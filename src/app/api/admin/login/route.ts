@@ -4,20 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { hashToken, getCookieName, noIndexHeaders } from "@/lib/adminAuth";
 
-async function getPasswordFromRequest(request: NextRequest): Promise<string | null> {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const body = await request.json().catch(() => ({}));
-    return typeof body.password === "string" ? body.password.trim() : null;
-  }
-  if (contentType.includes("application/x-www-form-urlencoded")) {
-    const formData = await request.formData();
-    const password = formData.get("password");
-    return typeof password === "string" ? password.trim() : null;
-  }
-  return null;
-}
-
 export async function POST(request: NextRequest) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
@@ -30,7 +16,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const password = await getPasswordFromRequest(request);
+  let password: string | null = null;
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = await request.json().catch(() => ({}));
+    password = typeof body.password === "string" ? body.password.trim() : null;
+  } else if (contentType.includes("application/x-www-form-urlencoded")) {
+    const formData = await request.formData();
+    const val = formData.get("password");
+    password = typeof val === "string" ? val.trim() : null;
+  }
+
   if (!password) {
     return NextResponse.json(
       { error: "Password required" },
@@ -39,19 +35,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (password !== expectedPassword) {
-    const url = request.nextUrl;
-    const redirectTo = new URL("/", url.origin);
-    redirectTo.searchParams.set("login_failed", "1");
-    return NextResponse.redirect(redirectTo, { status: 302, headers });
+    return NextResponse.json(
+      { error: "Invalid password" },
+      { status: 401, headers }
+    );
   }
 
   const token = hashToken(password);
   const cookieName = getCookieName();
   const maxAge = 30 * 24 * 60 * 60; // 30 days
 
-  const url = request.nextUrl;
-  const redirectTo = new URL("/", url.origin);
-  const response = NextResponse.redirect(redirectTo, { status: 302, headers });
+  // Return 200 with Set-Cookie (no redirect).
+  // The client will redirect after receiving the cookie.
+  const response = NextResponse.json({ ok: true }, { status: 200, headers });
 
   response.cookies.set(cookieName, token, {
     path: "/",
