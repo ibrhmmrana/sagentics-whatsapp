@@ -60,9 +60,9 @@ export default function DashboardLayoutClient({
           </Link>
         </nav>
         <div className="dashboard-admin__footer">
-          <Link href="/api/admin/logout" className="dashboard-admin__logout">
+          <a href="/api/admin/logout" className="dashboard-admin__logout">
             Log out
-          </Link>
+          </a>
         </div>
       </aside>
       <main className="dashboard-admin__main">{children}</main>
