@@ -21,6 +21,13 @@ Copy `.env.example` to `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Required for admin dashboard (auth + Realtime). |
 | **AI** | |
 | `OPENAI_API_KEY` | For the WhatsApp AI agent (e.g. gpt-4o-mini). |
+| **Inactivity email alert (optional)** | |
+| `AWS_REGION` | AWS region for SES (e.g. `us-east-1`). |
+| `AWS_ACCESS_KEY_ID` | AWS IAM access key with SES send permission. |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret key. |
+| `SES_FROM_EMAIL` | Verified sender email in SES (e.g. `alerts@yourdomain.com`). |
+| `INACTIVITY_ALERT_EMAIL` | Email address(es) to receive the inactivity alert. Comma- or semicolon-separated for multiple (e.g. `a@x.com, b@y.com`). |
+| `INACTIVITY_ALERT_CRON_SECRET` | Secret for the cron endpoint; pass as `?secret=...` or `x-cron-secret` header so only your cron can call it. Optional but recommended. |
 
 **Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). Admin auth uses Supabase Auth (email + password). Session is stored in cookies via @supabase/ssr. In Supabase Dashboard go to Authentication → Providers → Email and turn off "Enable Sign Up". Add admin users manually under Authentication → Users → Add user.
 
@@ -32,6 +39,7 @@ Run the SQL migrations in order:
 
 1. **001_whatsapp_tables.sql** — creates **chatbot_history** (every message for dashboard and AI context) and **whatsapp_human_control** (human takeover flag).
 2. **002_chatbot_history_flat_view.sql** — creates **chatbot_history_flat** view so messages show correctly when `message`/`customer` are stored as JSON strings in JSONB. Run this in Supabase SQL Editor if you already have data.
+3. **005_inactivity_alert_log.sql** — creates **inactivity_alert_log** (used to throttle inactivity email alerts).
 
 **Realtime (required for live updates in the dashboard):**
 
@@ -64,7 +72,22 @@ If **conversations don’t load** or **live messages don’t appear** on product
 ## Routes
 
 - `GET/POST /api/whatsapp/webhook` — Meta webhook (verify + receive messages).
+- `GET /api/cron/inactivity-alert` — Cron: if no incoming WhatsApp message for 4+ hours, sends an email via AWS SES (throttled to at most one email per 4 hours). See **Inactivity alert (n8n)** below.
 - `/` — Admin home (login if not authenticated).
 - `/whatsapp` — WhatsApp conversations, take over / handover to AI, send messages.
+
+### Inactivity alert (n8n)
+
+To get an email when there’s no WhatsApp activity for 4+ hours:
+
+1. Set `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SES_FROM_EMAIL`, `INACTIVITY_ALERT_EMAIL`, and optionally `INACTIVITY_ALERT_CRON_SECRET` in your environment.
+2. Run migration **005_inactivity_alert_log.sql** in Supabase.
+3. In n8n, create a **Schedule Trigger** (e.g. every **15 minutes**).
+4. Add an **HTTP Request** node:
+   - **Method:** GET
+   - **URL:** `https://<your-app-domain>/api/cron/inactivity-alert`
+   - **Authentication:** None (or add a query param: `?secret=<INACTIVITY_ALERT_CRON_SECRET>` or header `x-cron-secret: <INACTIVITY_ALERT_CRON_SECRET>`).
+
+**How often to hit:** Every **15 minutes** is a good default. You’ll get at most one email per 4 hours when inactive; the endpoint skips sending if there was recent activity or a recent alert.
 
 Redirects: `/dashboard-admin` → `/`, `/dashboard-admin/communications/whatsapp` → `/whatsapp` (for old links).
