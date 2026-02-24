@@ -6,16 +6,16 @@
 
 ## 1. Project overview
 
-- **App:** Next.js 14 (App Router) app called "Webfluential" — an internal admin dashboard plus WhatsApp AI agent.
+- **App:** Next.js 14 (App Router) app called "sagentics" — an internal admin dashboard plus WhatsApp AI agent.
 - **Stack:** Next.js 14.2, React 18, Supabase (database + auth), `@supabase/ssr` for cookie-based auth.
-- **Hosting:** Deployed on Vercel. **Production URL uses a custom domain:** `https://webfluential.intakt.co.za` (not the default `*.vercel.app`).
+- **Hosting:** Deployed on Vercel. **Production URL uses a custom domain:** `https://sagentics.intakt.co.za` (not the default `*.vercel.app`).
 - **Auth:** Supabase Auth only. Email + password sign-in; **sign-up is disabled** in Supabase. Users are created manually in Supabase Dashboard. Session is intended to be stored in cookies via `@supabase/ssr` so both server and client can use it.
 
 ---
 
 ## 2. Observed behaviour (the bug)
 
-1. User opens the app on production (e.g. `https://webfluential.intakt.co.za`).
+1. User opens the app on production (e.g. `https://sagentics.intakt.co.za`).
 2. User signs in with email + password. Login succeeds; they are redirected to the home page and see the dashboard (sidebar with "Home", "WhatsApp", "Log out").
 3. User navigates to the WhatsApp page (`/whatsapp`). They see the layout (sidebar) but in the main content area a **red error banner** appears: **"Not signed in"**.
 4. The same happens on **page refresh**: layout still shows (user appears “logged in”), but the WhatsApp page shows "Not signed in" and no conversations load.
@@ -82,7 +82,7 @@ So the API can authenticate either from **cookies on the request** or from the *
 
 So we have:
 
-- Same origin: `https://webfluential.intakt.co.za`.
+- Same origin: `https://sagentics.intakt.co.za`.
 - Document request: server sees valid session (layout shows dashboard).
 - API request: server sees no valid session (401).
 
@@ -98,7 +98,7 @@ Possible explanations (to be verified by the fixer):
    In Next.js, `cookies()` in a Route Handler might not be the same as the cookies on the incoming request (e.g. different API or timing). We tried to avoid this by using `request.cookies` in the API via `createClientFromRequest(request)`, but if the browser never sends cookies on that request, `request.cookies` would still be empty.
 
 4. **Custom domain / proxy**  
-   With a custom domain (e.g. `webfluential.intakt.co.za`) behind Vercel, cookies might be set for a different host or path, or a proxy might strip or alter the `Cookie` or `Authorization` header for API routes.
+   With a custom domain (e.g. `sagentics.intakt.co.za`) behind Vercel, cookies might be set for a different host or path, or a proxy might strip or alter the `Cookie` or `Authorization` header for API routes.
 
 5. **Middleware not propagating cookies**  
    Even if middleware refreshes and calls `request.cookies.set(...)`, Next.js might not pass that mutated request to Route Handlers, so the API might always see the original request (without refreshed cookies). Layout might be reading cookies in a different way (e.g. from a different context) and therefore see the session.
@@ -122,7 +122,7 @@ Possible explanations (to be verified by the fixer):
 
 ## 6. Environment
 
-- **Production URL:** `https://webfluential.intakt.co.za` (custom domain, not `*.vercel.app`).
+- **Production URL:** `https://sagentics.intakt.co.za` (custom domain, not `*.vercel.app`).
 - **Env vars (relevant):** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (and Supabase service key for DB). Sign-up is disabled in Supabase; users exist in Supabase Auth and can sign in.
 - **Repro:** Sign in on production → go to `/whatsapp` or refresh → "Not signed in" in the WhatsApp area while the rest of the dashboard (layout) still shows.
 
@@ -180,7 +180,7 @@ Since `httpOnly: false`, the browser client (`createBrowserClient`) reads/writes
 
 3. **Client-side:** Right before the fetch, log the result of `getSession()` and whether `getAuthHeaders()` returns a non-empty `Authorization` header. Confirm the token is present and that it’s the same as what the server receives.
 
-4. **Cookie attributes:** Inspect the Supabase auth cookies in the browser (Application → Cookies). Check domain, path, `SameSite`, `Secure`, and whether they’re present for `webfluential.intakt.co.za` when the API request is made.
+4. **Cookie attributes:** Inspect the Supabase auth cookies in the browser (Application → Cookies). Check domain, path, `SameSite`, `Secure`, and whether they’re present for `sagentics.intakt.co.za` when the API request is made.
 
 5. **Alternative auth for API:** If cookies and Bearer token continue to fail on the custom domain, consider authenticating API routes in a different way (e.g. a separate API key or server-side session store) while keeping Supabase Auth for the login UI and layout.
 

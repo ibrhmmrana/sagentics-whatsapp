@@ -1,10 +1,10 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "WhatsApp - Webfluential",
+  title: "WhatsApp - sagentics",
   description: "WhatsApp Webhook Integration",
   icons: {
-    icon: "/webfluential%20favicon.svg",
+    icon: "/Sagentics%20Logo%20Cream.svg",
   },
 };
 

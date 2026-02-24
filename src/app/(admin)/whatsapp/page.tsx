@@ -31,7 +31,7 @@ type ChatMessage = {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const VIEWED_KEY = "webfluential_whatsapp_viewed";
+const VIEWED_KEY = "sagentics_whatsapp_viewed";
 
 function formatTime(iso: string) {
   const d = new Date(iso);

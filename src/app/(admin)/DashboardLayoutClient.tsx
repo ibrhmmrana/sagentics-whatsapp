@@ -176,13 +176,12 @@ export default function DashboardLayoutClient({
       <aside className="dashboard-admin__sidebar">
         <div className="dashboard-admin__logo">
           <img
-            src="/webfluential%20favicon.svg"
-            alt=""
+            src="/Sagentics%20Logo%20Cream.svg"
+            alt="Sagentics"
             className="dashboard-admin__logo-icon"
-            width={36}
-            height={36}
+            width={140}
+            height={28}
           />
-          <span className="dashboard-admin__logo-text">Webfluential</span>
           <button
             type="button"
             className="dashboard-admin__collapse"

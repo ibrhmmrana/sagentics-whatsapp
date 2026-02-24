@@ -1,4 +1,4 @@
-# Webfluential
+# sagentics
 
 WhatsApp AI agent + admin dashboard (Next.js App Router).
 
@@ -31,7 +31,7 @@ Copy `.env.example` to `.env.local` and fill in:
 
 **Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). Admin auth uses Supabase Auth (email + password). Session is stored in cookies via @supabase/ssr. In Supabase Dashboard go to Authentication → Providers → Email and turn off "Enable Sign Up". Add admin users manually under Authentication → Users → Add user.
 
-**Custom domain:** If you use both a Vercel URL (e.g. `webfluential-whatsapp.vercel.app`) and a custom domain (e.g. `webfluential.intakt.co.za`), cookies are per-origin. Always open and sign in on the **same** URL you use for the dashboard (e.g. only the custom domain, or only the Vercel URL). Otherwise the server won't receive auth cookies and you'll see "Not signed in".
+**Custom domain:** If you use both a Vercel URL (e.g. `sagentics-whatsapp.vercel.app`) and a custom domain (e.g. `sagentics.intakt.co.za`), cookies are per-origin. Always open and sign in on the **same** URL you use for the dashboard (e.g. only the custom domain, or only the Vercel URL). Otherwise the server won't receive auth cookies and you'll see "Not signed in".
 
 ## Database (Supabase)
 
@@ -78,7 +78,7 @@ If **conversations don’t load** or **live messages don’t appear** on product
 
 ### Inactivity alert (n8n)
 
-To get an email when there’s no WhatsApp activity for 4+ hours:
+Failure detection: get an email when there’s no WhatsApp activity for 4+ hours so you know when something may be broken (e.g. webhook or pipeline down):
 
 1. Set `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `SES_FROM_EMAIL`, `INACTIVITY_ALERT_EMAIL`, and optionally `INACTIVITY_ALERT_CRON_SECRET` in your environment.
 2. Run migration **005_inactivity_alert_log.sql** in Supabase.

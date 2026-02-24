@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     const sendResult = await sendSes({
       to: ALERT_EMAILS,
-      subject: `[Webfluential] No WhatsApp messages for ${INACTIVITY_HOURS}+ hours`,
+      subject: `[sagentics] No WhatsApp messages for ${INACTIVITY_HOURS}+ hours`,
       text: `There has been no incoming WhatsApp message for more than ${INACTIVITY_HOURS} hours.\n\nLast incoming message: ${lastHumanMessageAt?.toISOString() ?? "never"}\nChecked at: ${now.toISOString()}`,
     });
 

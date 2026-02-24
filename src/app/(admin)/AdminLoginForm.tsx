@@ -64,11 +64,11 @@ export default function AdminLoginForm() {
   return (
     <div className="admin-login">
       <img
-        src="/webfluential%20favicon.svg"
-        alt=""
+        src="/Sagentics%20Logo%20Cream.svg"
+        alt="Sagentics"
         className="admin-login__logo"
-        width={64}
-        height={64}
+        width={224}
+        height={42}
       />
       <h1 className="admin-login__title">WhatsApp Admin</h1>
       <p className="admin-login__hint">Don&apos;t have an account? Contact an admin.</p>
