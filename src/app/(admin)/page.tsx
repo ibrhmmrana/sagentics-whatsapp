@@ -15,7 +15,9 @@ export default function HomePage() {
           </p>
         </Link>
       </div>
-      <p className="dashboard-home__footer">©{new Date().getFullYear()}</p>
+      <footer className="dashboard-home__footer">
+        <span className="dashboard-home__footer-copy">sagentics ©{new Date().getFullYear()}</span>
+      </footer>
     </div>
   );
 }

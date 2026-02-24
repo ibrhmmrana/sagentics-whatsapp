@@ -319,16 +319,28 @@ textarea {
   position: relative;
 }
 .dashboard-admin__logo-icon {
-  height: 28px;
-  width: auto;
-  max-width: 160px;
   object-fit: contain;
   flex: 1;
   min-width: 0;
 }
-.dashboard-admin--sidebar-collapsed .dashboard-admin__logo-icon {
-  height: 14px;
-  max-width: 72px;
+.dashboard-admin__logo-icon--wordmark {
+  height: 28px;
+  width: auto;
+  max-width: 160px;
+}
+.dashboard-admin__logo-icon--favicon {
+  display: none;
+  height: 32px;
+  width: 32px;
+  flex: 0 0 auto;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logo-icon--wordmark {
+  display: none;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logo-icon--favicon {
+  display: block;
+  height: 32px;
+  width: 32px;
   flex: 0 0 auto;
 }
 .dashboard-admin__collapse {

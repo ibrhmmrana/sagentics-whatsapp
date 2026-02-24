@@ -178,9 +178,16 @@ export default function DashboardLayoutClient({
           <img
             src="/Sagentics%20Logo%20Cream.svg"
             alt="Sagentics"
-            className="dashboard-admin__logo-icon"
+            className="dashboard-admin__logo-icon dashboard-admin__logo-icon--wordmark"
             width={140}
             height={28}
+          />
+          <img
+            src="/sagentics%20favicon.svg"
+            alt="Sagentics"
+            className="dashboard-admin__logo-icon dashboard-admin__logo-icon--favicon"
+            width={32}
+            height={32}
           />
           <button
             type="button"

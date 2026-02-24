@@ -4,7 +4,7 @@ export const metadata = {
   title: "WhatsApp - sagentics",
   description: "WhatsApp Webhook Integration",
   icons: {
-    icon: "/Sagentics%20Logo%20Cream.svg",
+    icon: "/sagentics%20favicon.svg",
   },
 };
 
