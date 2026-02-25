@@ -31,7 +31,8 @@ export async function processMessage(
   const knowledgeMatches = await searchKnowledge(userMessage, KNOWLEDGE_TOP_K);
   let systemContent =
     systemPrompt +
-    "\n\nUse the full conversation history: remember and use any details the user has already shared (e.g. their name, preferences) when answering. Do not ask again for information they have already provided.";
+    "\n\nUse the full conversation history: remember and use any details the user has already shared (e.g. their name, preferences) when answering. Do not ask again for information they have already provided." +
+    "\n\nNever use em dashes, en dashes, or hyphens in your replies. Use commas, semicolons, colons, or separate sentences instead.";
   if (knowledgeMatches.length > 0) {
     const contextText = knowledgeMatches.map((m) => m.content).join("\n\n");
     systemContent +=
@@ -71,9 +72,16 @@ export async function processMessage(
     messages,
   });
 
-  const content =
+  const raw =
     completion.choices[0]?.message?.content?.trim() ??
     "I didn't get a response. Please try again.";
+
+  // Strip em dashes, en dashes, and hyphens used as punctuation (keep hyphens inside words like "follow-up")
+  const content = raw
+    .replace(/\u2014/g, ",")   // em dash → comma
+    .replace(/\u2013/g, ",")   // en dash → comma
+    .replace(/\s+-\s+/g, ", ") // spaced hyphen → comma
+    .replace(/,{2,}/g, ",");   // collapse double commas
 
   return { content };
 }
