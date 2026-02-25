@@ -68,9 +68,12 @@ export default function ConnectPage() {
     }
   }, []);
 
-  // Load Facebook SDK
   useEffect(() => {
-    if (sdkLoaded.current || !FB_APP_ID) return;
+    if (sdkLoaded.current) return;
+    if (!FB_APP_ID) {
+      setError("Facebook App ID not configured. Restart the dev server after setting NEXT_PUBLIC_FB_APP_ID in .env.local");
+      return;
+    }
     sdkLoaded.current = true;
 
     const initFB = () => {
@@ -81,7 +84,6 @@ export default function ConnectPage() {
           xfbml: false,
           version: "v20.0",
         });
-        console.log("[Connect] FB.init() called successfully");
         setSdkReady(true);
       }
     };
@@ -94,19 +96,14 @@ export default function ConnectPage() {
     script.defer = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
-      console.log("[Connect] FB SDK script onload fired, window.FB =", !!window.FB);
-      if (window.FB && !sdkReady) {
-        initFB();
-      }
+      if (window.FB) initFB();
     };
     script.onerror = () => {
-      console.error("[Connect] FB SDK script failed to load");
       setError("Failed to load Facebook SDK. Check your network or ad blocker.");
     };
     document.body.appendChild(script);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for session info messages from the Embedded Signup popup
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (
@@ -144,8 +141,6 @@ export default function ConnectPage() {
   }, [fetchConnections]);
 
   const handleConnect = () => {
-    console.log("[Connect] handleConnect called, sdkReady:", sdkReady, "window.FB:", !!window.FB, "config_id:", FB_CONFIG_ID);
-
     if (!window.FB || !sdkReady) {
       setError("Facebook SDK not loaded yet. Please wait a moment and try again.");
       return;
@@ -160,7 +155,6 @@ export default function ConnectPage() {
     setConnecting(true);
     sessionInfoRef.current = {};
 
-    // Safety timeout: if the popup is blocked or FB.login never calls back
     const timeout = setTimeout(() => {
       setConnecting(false);
       setError(
@@ -169,9 +163,8 @@ export default function ConnectPage() {
     }, 120000);
 
     window.FB.login(
-      async (response) => {
+      (response) => {
         clearTimeout(timeout);
-        console.log("[Connect] FB.login response:", response);
 
         const code = response.authResponse?.code;
         if (!code) {
@@ -182,47 +175,48 @@ export default function ConnectPage() {
           return;
         }
 
-        // Wait briefly for the session info message to arrive
-        await new Promise((r) => setTimeout(r, 2000));
+        // Wait briefly for the session info message, then do async work
+        setTimeout(() => {
+          const { phone_number_id, waba_id } = sessionInfoRef.current;
 
-        const { phone_number_id, waba_id } = sessionInfoRef.current;
-        console.log("[Connect] Session info:", sessionInfoRef.current);
-
-        if (!phone_number_id || !waba_id) {
-          setConnecting(false);
-          setError(
-            "Could not retrieve WhatsApp account details from the signup flow. Please try again."
-          );
-          return;
-        }
-
-        try {
-          const authHeaders = await getAuthHeaders();
-          const res = await fetch("/api/admin/whatsapp/connect", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json", ...authHeaders },
-            body: JSON.stringify({
-              code,
-              phoneNumberId: phone_number_id,
-              wabaId: waba_id,
-            }),
-          });
-
-          const data = await res.json();
-          if (!res.ok) {
-            setError(data.error ?? "Failed to connect.");
-          } else {
-            setSuccess("WhatsApp account connected successfully!");
-            await fetchConnections();
+          if (!phone_number_id || !waba_id) {
+            setConnecting(false);
+            setError(
+              "Could not retrieve WhatsApp account details from the signup flow. Please try again."
+            );
+            return;
           }
-        } catch (err) {
-          setError(
-            `Connection failed: ${err instanceof Error ? err.message : "Unknown error"}`
+
+          getAuthHeaders().then((authHeaders) =>
+            fetch("/api/admin/whatsapp/connect", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json", ...authHeaders },
+              body: JSON.stringify({
+                code,
+                phoneNumberId: phone_number_id,
+                wabaId: waba_id,
+              }),
+            })
+              .then((res) => res.json().then((data) => ({ res, data })))
+              .then(({ res, data }) => {
+                if (!res.ok) {
+                  setError(data.error ?? "Failed to connect.");
+                } else {
+                  setSuccess("WhatsApp account connected successfully!");
+                  fetchConnections();
+                }
+              })
+              .catch((err) => {
+                setError(
+                  `Connection failed: ${err instanceof Error ? err.message : "Unknown error"}`
+                );
+              })
+              .finally(() => {
+                setConnecting(false);
+              })
           );
-        } finally {
-          setConnecting(false);
-        }
+        }, 2000);
       },
       {
         config_id: FB_CONFIG_ID,
