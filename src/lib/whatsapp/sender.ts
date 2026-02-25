@@ -1,17 +1,20 @@
+import { resolveWhatsAppCredentials } from "@/lib/whatsapp/connections";
+
 /**
  * Send a text message via WhatsApp Cloud API.
+ * Credentials are resolved from DB (Embedded Signup) first, then env vars.
  */
 export async function sendWhatsAppMessage(
   phoneNumber: string,
   message: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const creds = await resolveWhatsAppCredentials();
 
-  if (!phoneNumberId || !accessToken) {
-    return { ok: false, error: "Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN" };
+  if (!creds) {
+    return { ok: false, error: "No WhatsApp credentials configured (DB or env vars)" };
   }
 
+  const { phoneNumberId, accessToken } = creds;
   const to = phoneNumber.replace(/\D/g, "");
 
   const res = await fetch(

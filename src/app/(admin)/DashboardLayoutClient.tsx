@@ -62,6 +62,14 @@ function IconAI() {
     </svg>
   );
 }
+function IconConnect() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
 function IconLogout() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -81,6 +89,7 @@ export default function DashboardLayoutClient({
   const whatsappActive = pathname === "/whatsapp";
   const knowledgeActive = pathname === "/knowledge";
   const aiActive = pathname === "/ai";
+  const connectActive = pathname === "/connect";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [devMode, setDevMode] = useState(true);
   const [allowedNumbers, setAllowedNumbers] = useState<string[]>([]);
@@ -226,6 +235,13 @@ export default function DashboardLayoutClient({
           >
             <span className="dashboard-admin__nav-icon"><IconAI /></span>
             <span className="dashboard-admin__nav-item-text">AI</span>
+          </Link>
+          <Link
+            href="/connect"
+            className={`dashboard-admin__nav-item ${connectActive ? "dashboard-admin__nav-item--active" : ""}`}
+          >
+            <span className="dashboard-admin__nav-icon"><IconConnect /></span>
+            <span className="dashboard-admin__nav-item-text">Connect</span>
           </Link>
         </nav>
         <div className="dashboard-admin__footer">
