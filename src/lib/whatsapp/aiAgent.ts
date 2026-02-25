@@ -40,17 +40,17 @@ export async function processMessage(
   }
   messages.push({ role: "system", content: systemContent });
 
-  // Load last N messages from chatbot_history (incoming message was already saved by webhook)
+  // Load the most recent N messages, then reverse to chronological order
   if (supabaseAdmin) {
     const { data: rows } = await supabaseAdmin
       .from("chatbot_history")
       .select("message")
       .eq("session_id", sessionId)
-      .order("date_time", { ascending: true })
+      .order("date_time", { ascending: false })
       .limit(HISTORY_LIMIT);
 
     if (rows?.length) {
-      for (const row of rows) {
+      for (const row of rows.reverse()) {
         const msg = row.message as { type?: string; content?: string };
         if (!msg?.content) continue;
         const role = msg.type === "human" ? "user" : "assistant";
