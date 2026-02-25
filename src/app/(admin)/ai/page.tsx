@@ -5,13 +5,24 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_MODEL } from "@/lib/whatsapp/aiModeSettings";
 
 const OPENAI_CHAT_MODELS = [
-  { id: "gpt-4o", label: "GPT-4o", desc: "Flagship. Fast, smart, multimodal." },
-  { id: "gpt-4o-mini", label: "GPT-4o mini", desc: "Lightweight and affordable." },
-  { id: "gpt-4-turbo", label: "GPT-4 Turbo", desc: "High capability, 128k context." },
-  { id: "gpt-4", label: "GPT-4", desc: "Original GPT-4." },
-  { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", desc: "Fast and low-cost." },
-  { id: "o1", label: "o1", desc: "Reasoning model for complex tasks." },
-  { id: "o1-mini", label: "o1 mini", desc: "Smaller reasoning model." },
+  {
+    id: "gpt-4o-mini",
+    label: "Value",
+    sublabel: "GPT-4o mini",
+    desc: "Fast, reliable, and cost-effective. Great for high-volume conversations.",
+  },
+  {
+    id: "gpt-4.1",
+    label: "Balanced",
+    sublabel: "GPT-4.1",
+    desc: "Strong quality and reasoning at a moderate price. Best for most use cases.",
+  },
+  {
+    id: "gpt-5-mini",
+    label: "Premium",
+    sublabel: "GPT-5 mini",
+    desc: "Top-tier capability and nuance. Ideal when every reply needs to be spot-on.",
+  },
 ];
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -23,13 +34,12 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export default function AIPage() {
   const [model, setModel] = useState(DEFAULT_MODEL);
-  const [customModel, setCustomModel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveModel = model === "custom" ? customModel.trim() || DEFAULT_MODEL : model;
+  const effectiveModel = OPENAI_CHAT_MODELS.some((m) => m.id === model) ? model : DEFAULT_MODEL;
 
   const fetchSettings = useCallback(async () => {
     setError(null);
@@ -48,13 +58,7 @@ export default function AIPage() {
       const data = await res.json();
       const savedModel = typeof data.model === "string" ? data.model.trim() : DEFAULT_MODEL;
       const isKnown = OPENAI_CHAT_MODELS.some((m) => m.id === savedModel);
-      if (isKnown) {
-        setModel(savedModel);
-        setCustomModel("");
-      } else {
-        setModel("custom");
-        setCustomModel(savedModel || "");
-      }
+      setModel(isKnown ? savedModel : DEFAULT_MODEL);
       setSystemPrompt(typeof data.systemPrompt === "string" ? data.systemPrompt : "");
     } finally {
       setLoading(false);
@@ -87,13 +91,7 @@ export default function AIPage() {
       const data = await res.json();
       const savedModel = typeof data.model === "string" ? data.model.trim() : DEFAULT_MODEL;
       const isKnown = OPENAI_CHAT_MODELS.some((m) => m.id === savedModel);
-      if (isKnown) {
-        setModel(savedModel);
-        setCustomModel("");
-      } else {
-        setModel("custom");
-        setCustomModel(savedModel || "");
-      }
+      setModel(isKnown ? savedModel : DEFAULT_MODEL);
       setSystemPrompt(typeof data.systemPrompt === "string" ? data.systemPrompt : "");
     } finally {
       setSaving(false);
@@ -115,6 +113,9 @@ export default function AIPage() {
         ) : (
           <form onSubmit={handleSave} className="knowledge-dash__form">
             <span className="knowledge-dash__label">Model</span>
+            <p className="knowledge-dash__muted ai-model-picker__hint">
+              Pick the right balance of cost and quality for your conversations.
+            </p>
             <div className="ai-model-picker">
               {OPENAI_CHAT_MODELS.map((m) => (
                 <button
@@ -125,30 +126,11 @@ export default function AIPage() {
                   className={`ai-model-picker__card ${model === m.id ? "ai-model-picker__card--selected" : ""}`}
                 >
                   <span className="ai-model-picker__name">{m.label}</span>
+                  <span className="ai-model-picker__sublabel">{m.sublabel}</span>
                   <span className="ai-model-picker__desc">{m.desc}</span>
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setModel("custom")}
-                disabled={saving}
-                className={`ai-model-picker__card ai-model-picker__card--custom ${model === "custom" ? "ai-model-picker__card--selected" : ""}`}
-              >
-                <span className="ai-model-picker__name">Custom</span>
-                <span className="ai-model-picker__desc">Enter any model ID.</span>
-              </button>
             </div>
-            {model === "custom" && (
-              <input
-                id="ai-custom-model"
-                type="text"
-                value={customModel}
-                onChange={(e) => setCustomModel(e.target.value)}
-                placeholder="e.g. gpt-4o-2024-08-06"
-                className="knowledge-dash__input"
-                disabled={saving}
-              />
-            )}
 
             <label className="knowledge-dash__label" htmlFor="system-prompt">
               System prompt

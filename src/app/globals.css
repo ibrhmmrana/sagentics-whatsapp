@@ -1436,17 +1436,27 @@ textarea {
 }
 
 /* AI model picker */
+.ai-model-picker__hint {
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+}
 .ai-model-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 720px) {
+  .ai-model-picker {
+    grid-template-columns: 1fr;
+  }
 }
 .ai-model-picker__card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  padding: 0.75rem 0.9rem;
+  padding: 0.9rem 1rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg-secondary);
@@ -1459,22 +1469,27 @@ textarea {
 }
 .ai-model-picker__card--selected {
   border-color: var(--accent);
-  background: rgba(32, 211, 98, 0.12);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .ai-model-picker__card--selected:hover:not(:disabled) {
   border-color: var(--accent);
-  background: rgba(32, 211, 98, 0.18);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .ai-model-picker__name {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
+}
+.ai-model-picker__sublabel {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
 }
 .ai-model-picker__desc {
   font-size: 0.75rem;
   color: var(--text-muted);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 .knowledge-dash__textarea {
   padding: 0.65rem 0.75rem;
