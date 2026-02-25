@@ -100,6 +100,15 @@ as $$
   limit match_count;
 $$;
 
+-- knowledge_source: store raw content per source for editing
+create table if not exists public.knowledge_source (
+  source text primary key,
+  raw_content text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.knowledge_source is 'Original content per source for editing; chunks live in knowledge_base.';
+
 -- -----------------------------------------------------------------------------
 -- 5. Inactivity alert log (throttle emails)
 -- -----------------------------------------------------------------------------

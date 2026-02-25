@@ -103,6 +103,16 @@ export async function ingestKnowledge(
   const { error: insertErr } = await supabaseAdmin.from("knowledge_base").insert(rows);
   if (insertErr) return { chunksInserted: 0, error: insertErr.message };
 
+  const { error: upsertErr } = await supabaseAdmin
+    .from("knowledge_source")
+    .upsert(
+      { source, raw_content: content, updated_at: new Date().toISOString() },
+      { onConflict: "source" }
+    );
+  if (upsertErr) {
+    console.warn("[ingest] knowledge_source upsert failed:", upsertErr.message);
+  }
+
   return { chunksInserted: chunks.length };
 }
 
@@ -116,6 +126,9 @@ export async function deleteKnowledgeBySource(source: string): Promise<{ error?:
     .from("knowledge_base")
     .delete()
     .eq("source", source);
+  if (error) return { error: error.message };
 
-  return error ? { error: error.message } : {};
+  await supabaseAdmin.from("knowledge_source").delete().eq("source", source);
+
+  return {};
 }
