@@ -47,6 +47,7 @@ export default function ConnectPage() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
   const sdkLoaded = useRef(false);
 
   const sessionInfoRef = useRef<{
@@ -72,21 +73,38 @@ export default function ConnectPage() {
     if (sdkLoaded.current || !FB_APP_ID) return;
     sdkLoaded.current = true;
 
-    window.fbAsyncInit = function () {
-      window.FB?.init({
-        appId: FB_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: "v20.0",
-      });
+    const initFB = () => {
+      if (window.FB) {
+        window.FB.init({
+          appId: FB_APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: "v20.0",
+        });
+        console.log("[Connect] FB.init() called successfully");
+        setSdkReady(true);
+      }
     };
+
+    window.fbAsyncInit = initFB;
 
     const script = document.createElement("script");
     script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.async = true;
     script.defer = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      console.log("[Connect] FB SDK script onload fired, window.FB =", !!window.FB);
+      if (window.FB && !sdkReady) {
+        initFB();
+      }
+    };
+    script.onerror = () => {
+      console.error("[Connect] FB SDK script failed to load");
+      setError("Failed to load Facebook SDK. Check your network or ad blocker.");
+    };
     document.body.appendChild(script);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for session info messages from the Embedded Signup popup
   useEffect(() => {
@@ -126,12 +144,14 @@ export default function ConnectPage() {
   }, [fetchConnections]);
 
   const handleConnect = () => {
-    if (!window.FB) {
-      setError("Facebook SDK not loaded yet. Please try again.");
+    console.log("[Connect] handleConnect called, sdkReady:", sdkReady, "window.FB:", !!window.FB, "config_id:", FB_CONFIG_ID);
+
+    if (!window.FB || !sdkReady) {
+      setError("Facebook SDK not loaded yet. Please wait a moment and try again.");
       return;
     }
     if (!FB_CONFIG_ID) {
-      setError("Facebook config_id is not configured.");
+      setError("Facebook config_id is not configured. Set NEXT_PUBLIC_FB_CONFIG_ID in env.");
       return;
     }
 
@@ -140,8 +160,19 @@ export default function ConnectPage() {
     setConnecting(true);
     sessionInfoRef.current = {};
 
+    // Safety timeout: if the popup is blocked or FB.login never calls back
+    const timeout = setTimeout(() => {
+      setConnecting(false);
+      setError(
+        "The Facebook popup may have been blocked. Please allow popups for this site and try again."
+      );
+    }, 120000);
+
     window.FB.login(
       async (response) => {
+        clearTimeout(timeout);
+        console.log("[Connect] FB.login response:", response);
+
         const code = response.authResponse?.code;
         if (!code) {
           setConnecting(false);
@@ -152,9 +183,11 @@ export default function ConnectPage() {
         }
 
         // Wait briefly for the session info message to arrive
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 2000));
 
         const { phone_number_id, waba_id } = sessionInfoRef.current;
+        console.log("[Connect] Session info:", sessionInfoRef.current);
+
         if (!phone_number_id || !waba_id) {
           setConnecting(false);
           setError(
@@ -249,7 +282,7 @@ export default function ConnectPage() {
               type="button"
               className="connect-page__btn"
               onClick={handleConnect}
-              disabled={connecting}
+              disabled={connecting || !sdkReady}
             >
               <svg
                 width="20"
@@ -260,7 +293,7 @@ export default function ConnectPage() {
               >
                 <path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 14.95 3.25 17.5 5.23 19.22L3.82 22L6.73 20.55C8.35 21.43 10.12 21.96 12 21.96C17.5 21.96 22 17.47 22 11.94C22 6.41 17.5 2.04 12 2.04Z" />
               </svg>
-              {connecting ? "Connecting..." : "Connect WhatsApp Account"}
+              {!sdkReady ? "Loading Facebook SDK..." : connecting ? "Connecting..." : "Connect WhatsApp Account"}
             </button>
           </div>
         ) : (
