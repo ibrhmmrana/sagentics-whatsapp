@@ -71,7 +71,7 @@ If **conversations don’t load** or **live messages don’t appear** on product
 
 ## Routes
 
-- `GET/POST /api/whatsapp/webhook` — Meta webhook (verify + receive messages).
+- `GET/POST /api/whatsapp/webhook-new` — Meta webhook (verify + receive messages).
 - `GET /api/cron/inactivity-alert` — Cron: if no incoming WhatsApp message for 4+ hours, sends an email via AWS SES (throttled to at most one email per 4 hours). See **Inactivity alert (n8n)** below.
 - `/` — Admin home (login if not authenticated).
 - `/whatsapp` — WhatsApp conversations, take over / handover to AI, send messages.
