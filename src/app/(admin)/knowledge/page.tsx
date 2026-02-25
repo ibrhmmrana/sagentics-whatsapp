@@ -44,6 +44,11 @@ export default function KnowledgeBasePage() {
   const [ingesting, setIngesting] = useState(false);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [deletingSource, setDeletingSource] = useState<string | null>(null);
+  const [editingSource, setEditingSource] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadSourceName, setUploadSourceName] = useState("");
   const [pasteSourceName, setPasteSourceName] = useState("");
@@ -113,7 +118,59 @@ export default function KnowledgeBasePage() {
       headers: authHeaders,
     });
     setDeletingSource(null);
-    if (res.ok) fetchSources();
+    if (res.ok) {
+      if (editingSource === source) setEditingSource(null);
+      fetchSources();
+    }
+  };
+
+  const handleEditOpen = async (source: string) => {
+    setEditingSource(source);
+    setEditContent("");
+    setEditError(null);
+    setLoadingEdit(true);
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`/api/admin/knowledge/${encodeURIComponent(source)}`, {
+      credentials: "include",
+      headers: authHeaders,
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    setLoadingEdit(false);
+    if (res.ok) {
+      setEditContent(data.rawContent ?? "");
+    } else {
+      setEditError(data.error ?? "Failed to load content");
+    }
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSource || !editContent.trim()) return;
+    setEditError(null);
+    setSavingEdit(true);
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/knowledge", {
+      method: "POST",
+      credentials: "include",
+      headers: { ...authHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ source: editingSource, content: editContent.trim() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingEdit(false);
+    if (!res.ok) {
+      setEditError(data.error ?? "Failed to save");
+      return;
+    }
+    setEditingSource(null);
+    setEditContent("");
+    fetchSources();
+  };
+
+  const handleEditCancel = () => {
+    setEditingSource(null);
+    setEditContent("");
+    setEditError(null);
   };
 
   const handleFileUpload = async (e: React.FormEvent) => {
@@ -350,6 +407,49 @@ export default function KnowledgeBasePage() {
         )}
       </section>
 
+      {editingSource && (
+        <section className="knowledge-dash__form-section knowledge-dash__edit-section">
+          <h2 className="knowledge-dash__section-title">Edit source: {editingSource}</h2>
+          {loadingEdit ? (
+            <p className="knowledge-dash__muted">Loading content…</p>
+          ) : (
+            <form onSubmit={handleEditSave} className="knowledge-dash__form">
+              <label className="knowledge-dash__label">Content</label>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="Edit the content for this source. Saving will replace all existing chunks."
+                className="knowledge-dash__textarea"
+                rows={12}
+                disabled={savingEdit}
+              />
+              {editError && (
+                <p className="knowledge-dash__error" role="alert">
+                  {editError}
+                </p>
+              )}
+              <div className="knowledge-dash__edit-actions">
+                <button
+                  type="button"
+                  onClick={handleEditCancel}
+                  disabled={savingEdit}
+                  className="knowledge-dash__btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit || !editContent.trim()}
+                  className="knowledge-dash__btn knowledge-dash__btn--primary"
+                >
+                  {savingEdit ? "Saving…" : "Save (replace existing)"}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      )}
+
       <section className="knowledge-dash__list-section">
         <h2 className="knowledge-dash__section-title">Existing sources</h2>
         {loading ? (
@@ -378,14 +478,24 @@ export default function KnowledgeBasePage() {
                     <td className="knowledge-dash__td">{row.chunkCount}</td>
                     <td className="knowledge-dash__td">{formatDate(row.createdAt)}</td>
                     <td className="knowledge-dash__td knowledge-dash__td--action">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(row.source)}
-                        disabled={deletingSource === row.source}
-                        className="knowledge-dash__btn knowledge-dash__btn--danger"
-                      >
-                        {deletingSource === row.source ? "Deleting…" : "Delete"}
-                      </button>
+                      <span className="knowledge-dash__row-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleEditOpen(row.source)}
+                          disabled={loadingEdit || savingEdit}
+                          className="knowledge-dash__btn knowledge-dash__btn--edit"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row.source)}
+                          disabled={deletingSource === row.source}
+                          className="knowledge-dash__btn knowledge-dash__btn--danger"
+                        >
+                          {deletingSource === row.source ? "Deleting…" : "Delete"}
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))}
