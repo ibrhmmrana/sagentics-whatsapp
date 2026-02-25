@@ -29,7 +29,9 @@ export async function processMessage(
 
   // Retrieve relevant knowledge base chunks for RAG
   const knowledgeMatches = await searchKnowledge(userMessage, KNOWLEDGE_TOP_K);
-  let systemContent = systemPrompt;
+  let systemContent =
+    systemPrompt +
+    "\n\nUse the full conversation history: remember and use any details the user has already shared (e.g. their name, preferences) when answering. Do not ask again for information they have already provided.";
   if (knowledgeMatches.length > 0) {
     const contextText = knowledgeMatches.map((m) => m.content).join("\n\n");
     systemContent +=
@@ -38,7 +40,7 @@ export async function processMessage(
   }
   messages.push({ role: "system", content: systemContent });
 
-  // Load last N messages from chatbot_history
+  // Load last N messages from chatbot_history (incoming message was already saved by webhook)
   if (supabaseAdmin) {
     const { data: rows } = await supabaseAdmin
       .from("chatbot_history")
@@ -57,8 +59,11 @@ export async function processMessage(
     }
   }
 
-  // Current user message
-  messages.push({ role: "user", content: userMessage });
+  // Current user message is already in history (webhook saves before calling us); only add if missing
+  const lastInHistory = messages[messages.length - 1];
+  if (!lastInHistory?.content || lastInHistory.role !== "user" || lastInHistory.content !== userMessage) {
+    messages.push({ role: "user", content: userMessage });
+  }
 
   const model = settings.model?.trim() || "gpt-4o-mini";
   const completion = await openai.chat.completions.create({
