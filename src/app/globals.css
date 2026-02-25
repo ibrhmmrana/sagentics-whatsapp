@@ -211,7 +211,11 @@ textarea {
   background: var(--bg-primary);
 }
 .dashboard-admin__sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
   width: 260px;
+  height: 100vh;
   flex-shrink: 0;
   background: var(--bg-primary);
   border-right: 1px solid var(--border);
@@ -219,6 +223,7 @@ textarea {
   flex-direction: column;
   padding: 1rem 0;
   transition: width 0.2s ease;
+  overflow-y: auto;
 }
 .dashboard-admin--sidebar-collapsed .dashboard-admin__sidebar {
   width: 72px;
