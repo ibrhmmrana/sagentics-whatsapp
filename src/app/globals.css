@@ -4,8 +4,8 @@
   --bg-primary: #013536;
   --bg-secondary: #024648;
   --bg-tertiary: #045658;
-  --accent: #20D362;
-  --accent-hover: #2ee66e;
+  --accent: #1a9d4d;
+  --accent-hover: #22b85c;
   --text-primary: #f1f5f9;
   --text-secondary: #b8c5d0;
   --text-muted: #8b9ca8;
@@ -457,7 +457,7 @@ textarea {
   background: #f59e0b;
 }
 .dashboard-admin__footer-dot--live {
-  background: #22c55e;
+  background: var(--accent);
 }
 .dashboard-admin__footer-mode-label {
   flex: 1;
@@ -479,7 +479,7 @@ textarea {
   transition: background 0.2s;
 }
 .dashboard-admin__footer-switch--on {
-  background: #22c55e;
+  background: var(--accent);
 }
 .dashboard-admin__footer-switch-thumb {
   position: absolute;
@@ -1644,7 +1644,7 @@ textarea {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--accent);
   flex-shrink: 0;
 }
 .connect-page__card-name {
