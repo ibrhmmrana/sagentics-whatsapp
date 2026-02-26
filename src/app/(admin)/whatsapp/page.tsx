@@ -25,6 +25,7 @@ type ChatMessage = {
   customerName: string | null;
   customerNumber: string;
   createdAt: string;
+  mediaId?: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -82,7 +83,7 @@ function realtimeRowToMessage(row: {
   customer: unknown;
   date_time: string;
 }): ChatMessage {
-  const msg = parseJson<{ type?: string; content?: string; body?: string }>(row.message);
+  const msg = parseJson<{ type?: string; content?: string; body?: string; media_id?: string }>(row.message);
   const cust = parseJson<{ name?: string; number?: string }>(row.customer);
   return {
     id: row.id,
@@ -92,6 +93,7 @@ function realtimeRowToMessage(row: {
     customerName: cust?.name ?? null,
     customerNumber: cust?.number ?? "",
     createdAt: row.date_time,
+    mediaId: msg?.media_id ?? null,
   };
 }
 
@@ -587,7 +589,23 @@ export default function WhatsAppDashboardPage() {
                   className={`whatsapp-dash__msg whatsapp-dash__msg--${m.senderType}`}
                 >
                   <div className="whatsapp-dash__msg-bubble">
-                    <p className="whatsapp-dash__msg-text">{m.content}</p>
+                    {m.mediaId ? (
+                      <>
+                        <audio
+                          controls
+                          className="whatsapp-dash__msg-audio"
+                          src={`/api/admin/whatsapp/media?mediaId=${encodeURIComponent(m.mediaId)}`}
+                          preload="metadata"
+                        />
+                        {m.content ? (
+                          <p className="whatsapp-dash__msg-text whatsapp-dash__msg-text--caption">
+                            {m.content}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="whatsapp-dash__msg-text">{m.content}</p>
+                    )}
                     <span className="whatsapp-dash__msg-time">{formatTime(m.createdAt)}</span>
                   </div>
                 </div>

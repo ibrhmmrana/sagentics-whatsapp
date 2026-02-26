@@ -10,19 +10,22 @@ export interface CustomerInfo {
 export interface MessageRecord {
   type: MessageType;
   content: string;
+  media_id?: string;
   additional_kwargs?: Record<string, unknown>;
   response_metadata?: Record<string, unknown>;
 }
 
 /**
  * Save a message to chatbot_history for dashboard and AI context.
+ * Pass mediaId when the message is a voice note (incoming or outgoing) so the UI can show a playable audio player.
  */
 export async function saveWhatsAppMessage(
   sessionId: string,
   messageType: MessageType,
   content: string,
   customer: CustomerInfo,
-  aiMetadata?: Record<string, unknown>
+  aiMetadata?: Record<string, unknown>,
+  mediaId?: string
 ): Promise<{ id?: number; date_time?: string; error?: string }> {
   if (!supabaseAdmin) {
     return { error: "Supabase not configured" };
@@ -32,6 +35,7 @@ export async function saveWhatsAppMessage(
     type: messageType,
     content,
     ...(aiMetadata && { response_metadata: aiMetadata }),
+    ...(mediaId && { media_id: mediaId }),
   };
 
   const { data, error } = await supabaseAdmin

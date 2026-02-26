@@ -51,7 +51,7 @@ export async function sendWhatsAppAudioMessage(
   phoneNumber: string,
   audioBuffer: Buffer,
   mimeType: string = "audio/ogg"
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; mediaId?: string }> {
   const creds = await resolveWhatsAppCredentials();
 
   if (!creds) {
@@ -116,5 +116,5 @@ export async function sendWhatsAppAudioMessage(
     return { ok: false, error: `${sendRes.status}: ${errBody}` };
   }
 
-  return { ok: true };
+  return { ok: true, mediaId };
 }

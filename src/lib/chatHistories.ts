@@ -22,6 +22,8 @@ export interface ChatMessage {
   customerName: string | null;
   customerNumber: string;
   createdAt: string;
+  /** When set, this message is a voice note; UI can show a playable audio player using /api/admin/whatsapp/media?mediaId=... */
+  mediaId?: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -47,7 +49,7 @@ function parseJsonField<T = Record<string, unknown>>(val: unknown): T | null {
 
 /** Convert a raw chatbot_history row into a ChatMessage for the UI. */
 function rowToChatMessage(row: Record<string, unknown>): ChatMessage {
-  const msg = parseJsonField<{ type?: string; content?: string; body?: string }>(row.message);
+  const msg = parseJsonField<{ type?: string; content?: string; body?: string; media_id?: string }>(row.message);
   const cust = parseJsonField<{ name?: string; number?: string }>(row.customer);
   return {
     id: row.id as number,
@@ -57,6 +59,7 @@ function rowToChatMessage(row: Record<string, unknown>): ChatMessage {
     customerName: cust?.name ?? null,
     customerNumber: cust?.number ?? "",
     createdAt: row.date_time ? String(row.date_time) : "",
+    mediaId: msg?.media_id ?? null,
   };
 }
 

@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[WhatsApp Webhook] Message from ${waId}: ${messageText}`);
 
-    await saveWhatsAppMessage(sessionId, "human", messageText, customer);
+    await saveWhatsAppMessage(sessionId, "human", messageText, customer, undefined, messageType === "audio" ? mediaId : undefined);
 
     const allowed = await isNumberAllowedForAi(customerNumber);
     if (!allowed) {
@@ -121,10 +121,14 @@ export async function POST(request: NextRequest) {
     );
 
     // --- Send voice note or text ---
+    let aiMediaId: string | undefined;
     if (respondWithVoice) {
       try {
         const audioBuffer = await textToSpeech(replyText);
         const sendResult = await sendWhatsAppAudioMessage(waId, audioBuffer, "audio/ogg");
+        if (sendResult.ok && sendResult.mediaId) {
+          aiMediaId = sendResult.mediaId;
+        }
         if (!sendResult.ok) {
           console.error("[WhatsApp Webhook] Voice reply failed:", sendResult.error, "— falling back to text");
           const textFallback = await sendWhatsAppMessage(waId, replyText);
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await saveWhatsAppMessage(sessionId, "ai", replyText, customer);
+    await saveWhatsAppMessage(sessionId, "ai", replyText, customer, undefined, aiMediaId);
   } catch (err) {
     console.error("[WhatsApp Webhook] Error processing request:", err);
   }
