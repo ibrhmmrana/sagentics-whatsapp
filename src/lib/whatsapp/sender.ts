@@ -68,7 +68,7 @@ export async function sendWhatsAppAudioMessage(
   formData.append("type", mimeType);
   formData.append(
     "file",
-    new Blob([audioBuffer], { type: mimeType }),
+    new Blob([new Uint8Array(audioBuffer)], { type: mimeType }),
     `voice.${ext}`
   );
 
