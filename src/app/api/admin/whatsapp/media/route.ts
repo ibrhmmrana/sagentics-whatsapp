@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Failed to load media", { status: 502 });
   }
 
-  return new NextResponse(media.buffer, {
+  return new NextResponse(new Uint8Array(media.buffer), {
     status: 200,
     headers: {
       "Content-Type": media.mimeType || "audio/ogg",
