@@ -5,9 +5,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractIncomingMessage } from "@/lib/whatsapp/parsePayload";
 import { isHumanInControl } from "@/lib/whatsapp/humanControl";
 import { saveWhatsAppMessage } from "@/lib/whatsapp/messageStorage";
-import { sendWhatsAppMessage } from "@/lib/whatsapp/sender";
+import { sendWhatsAppMessage, sendWhatsAppAudioMessage } from "@/lib/whatsapp/sender";
 import { processMessage } from "@/lib/whatsapp/aiAgent";
 import { isNumberAllowedForAi } from "@/lib/whatsapp/aiModeSettings";
+import {
+  downloadWhatsAppMedia,
+  transcribeAudio,
+  textToSpeech,
+  wantsVoiceResponse,
+} from "@/lib/whatsapp/audio";
 
 const SESSION_PREFIX = process.env.WHATSAPP_SESSION_ID_PREFIX ?? "APP-";
 
@@ -38,7 +44,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// POST — Incoming message: human check, save, AI (or skip), send reply, save
+// POST — Incoming message: text or voice note
 // ---------------------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
@@ -46,18 +52,46 @@ export async function POST(request: NextRequest) {
     const parsed = extractIncomingMessage(body);
 
     if (!parsed) {
-      console.log("[WhatsApp Webhook] No actionable text message in payload");
+      console.log("[WhatsApp Webhook] No actionable message in payload");
       return NextResponse.json({ status: "ok" }, { status: 200 });
     }
 
-    const { waId, text: messageText, customerName } = parsed;
+    const { waId, customerName, messageType, mediaId } = parsed;
+    let messageText = parsed.text;
     const sessionId = buildSessionId(waId);
     const customerNumber = waId.replace(/\D/g, "");
     const customer = { number: customerNumber, name: customerName };
 
+    let respondWithVoice = false;
+
+    // --- Voice note: download and transcribe ---
+    if (messageType === "audio" && mediaId) {
+      console.log(`[WhatsApp Webhook] Voice note from ${waId}, mediaId=${mediaId}`);
+      respondWithVoice = true;
+
+      try {
+        const media = await downloadWhatsAppMedia(mediaId);
+        if (!media) {
+          console.error("[WhatsApp Webhook] Failed to download voice note");
+          return NextResponse.json({ status: "ok" }, { status: 200 });
+        }
+        messageText = await transcribeAudio(media.buffer, media.mimeType);
+        console.log(`[WhatsApp Webhook] Transcription: ${messageText}`);
+      } catch (err) {
+        console.error("[WhatsApp Webhook] Transcription error:", err);
+        return NextResponse.json({ status: "ok" }, { status: 200 });
+      }
+
+      if (!messageText.trim()) {
+        console.log("[WhatsApp Webhook] Empty transcription — skipping");
+        return NextResponse.json({ status: "ok" }, { status: 200 });
+      }
+    } else {
+      respondWithVoice = wantsVoiceResponse(messageText);
+    }
+
     console.log(`[WhatsApp Webhook] Message from ${waId}: ${messageText}`);
 
-    // Save incoming message to history
     await saveWhatsAppMessage(sessionId, "human", messageText, customer);
 
     const allowed = await isNumberAllowedForAi(customerNumber);
@@ -70,7 +104,6 @@ export async function POST(request: NextRequest) {
     }
 
     const humanInControl = await isHumanInControl(sessionId);
-
     if (humanInControl) {
       console.log("[WhatsApp Webhook] Human in control — AI skipped");
       return NextResponse.json(
@@ -79,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // AI in control: call agent, send reply, save reply
+    // --- AI reply ---
     const { content: replyText } = await processMessage(
       sessionId,
       messageText,
@@ -87,9 +120,30 @@ export async function POST(request: NextRequest) {
       customerName
     );
 
-    const sendResult = await sendWhatsAppMessage(waId, replyText);
-    if (!sendResult.ok) {
-      console.error("[WhatsApp Webhook] Failed to send reply:", sendResult.error);
+    // --- Send voice note or text ---
+    if (respondWithVoice) {
+      try {
+        const audioBuffer = await textToSpeech(replyText);
+        const sendResult = await sendWhatsAppAudioMessage(waId, audioBuffer, "audio/ogg");
+        if (!sendResult.ok) {
+          console.error("[WhatsApp Webhook] Voice reply failed:", sendResult.error, "— falling back to text");
+          const textFallback = await sendWhatsAppMessage(waId, replyText);
+          if (!textFallback.ok) {
+            console.error("[WhatsApp Webhook] Text fallback also failed:", textFallback.error);
+          }
+        }
+      } catch (err) {
+        console.error("[WhatsApp Webhook] TTS error, falling back to text:", err);
+        const textFallback = await sendWhatsAppMessage(waId, replyText);
+        if (!textFallback.ok) {
+          console.error("[WhatsApp Webhook] Text fallback also failed:", textFallback.error);
+        }
+      }
+    } else {
+      const sendResult = await sendWhatsAppMessage(waId, replyText);
+      if (!sendResult.ok) {
+        console.error("[WhatsApp Webhook] Failed to send reply:", sendResult.error);
+      }
     }
 
     await saveWhatsAppMessage(sessionId, "ai", replyText, customer);

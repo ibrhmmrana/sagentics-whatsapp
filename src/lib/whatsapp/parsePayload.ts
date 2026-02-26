@@ -1,6 +1,6 @@
 /**
  * Parse incoming Meta webhook payloads (multiple formats).
- * Returns waId, text, and optional customerName. Only supports type === 'text'.
+ * Supports text and audio (voice note) message types.
  */
 
 interface WhatsAppContact {
@@ -8,21 +8,25 @@ interface WhatsAppContact {
   profile?: { name: string };
 }
 
-interface WhatsAppTextMessage {
+interface WhatsAppMessage {
   from: string;
   type: string;
   text?: { body: string };
+  audio?: { id: string; mime_type?: string };
 }
 
 interface MessagesPayload {
   contacts?: WhatsAppContact[];
-  messages?: WhatsAppTextMessage[];
+  messages?: WhatsAppMessage[];
 }
 
 export interface ParsedIncomingMessage {
   waId: string;
   text: string;
   customerName?: string;
+  messageType: "text" | "audio";
+  mediaId?: string;
+  mediaMimeType?: string;
 }
 
 export function extractIncomingMessage(body: unknown): ParsedIncomingMessage | null {
@@ -67,15 +71,32 @@ export function extractIncomingMessage(body: unknown): ParsedIncomingMessage | n
 
   if (!payload?.messages) return null;
 
-  const msg = payload.messages.find((m) => m.type === "text");
-  if (!msg?.text?.body) return null;
-
-  const waId = payload.contacts?.[0]?.wa_id ?? msg.from;
+  const waId = payload.contacts?.[0]?.wa_id;
   const customerName = payload.contacts?.[0]?.profile?.name;
 
-  return {
-    waId,
-    text: msg.text.body,
-    customerName: customerName ?? undefined,
-  };
+  // Try text message first
+  const textMsg = payload.messages.find((m) => m.type === "text");
+  if (textMsg?.text?.body) {
+    return {
+      waId: waId ?? textMsg.from,
+      text: textMsg.text.body,
+      customerName: customerName ?? undefined,
+      messageType: "text",
+    };
+  }
+
+  // Try audio / voice note message
+  const audioMsg = payload.messages.find((m) => m.type === "audio");
+  if (audioMsg?.audio?.id) {
+    return {
+      waId: waId ?? audioMsg.from,
+      text: "",
+      customerName: customerName ?? undefined,
+      messageType: "audio",
+      mediaId: audioMsg.audio.id,
+      mediaMimeType: audioMsg.audio.mime_type,
+    };
+  }
+
+  return null;
 }
